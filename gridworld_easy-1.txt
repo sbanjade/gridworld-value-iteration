@@ -1,0 +1,19 @@
+# Simple deterministic gridworld
+# Format:
+# rows cols
+# start_row start_col
+# terminals: (r,c,reward)
+# walls: (r,c)
+# step_reward
+# noise
+
+4 4
+0 0
+TERMINALS
+3 3 1.0
+END
+WALLS
+1 1
+END
+-0.04
+0.0
