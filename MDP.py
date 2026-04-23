@@ -1,4 +1,6 @@
-## DO NOT MAKE ANY CHANGES TO THE CODE UNLESS INSTRUCTED. ONLY MODULES STATED IN THE INSTRUCTION CAN BE IMPORTED
+#Name: Sachin Banajde
+#EUID: SB3064
+
 import tkinter as tk
 import math
 import matplotlib.pyplot as plt
