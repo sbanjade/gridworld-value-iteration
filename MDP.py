@@ -1,6 +1,7 @@
 ## DO NOT MAKE ANY CHANGES TO THE CODE UNLESS INSTRUCTED. ONLY MODULES STATED IN THE INSTRUCTION CAN BE IMPORTED
 import tkinter as tk
 import math
+import matplotlib.pyplot as plt
 
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT']
 ARROWS = {'UP': '↑', 'DOWN': '↓', 'LEFT': '←', 'RIGHT': '→'}
@@ -139,7 +140,7 @@ def value_iteration(rows, cols, terminals, walls, step_reward, noise, gamma, eps
             break
 
     print(f"Gamma = {gamma} converged in {iteration} iterations")
-    return V
+    return V, iteration
 
 
 def init_values(rows, cols, walls, terminals):
@@ -192,6 +193,107 @@ def extract_policy(V, rows, cols, terminals, walls, step_reward, noise, gamma):
             policy[s] = best_a
 
     return policy
+
+
+def _manhattan(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def summarize_policy_behavior(start, terminals, policy):
+    """Prints a simple policy-behavior summary for the report section."""
+    pos_terms = [s for s, rew in terminals.items() if rew > 0]
+    neg_terms = [s for s, rew in terminals.items() if rew < 0]
+
+    if start in policy:
+        first_action = policy[start]
+        print(f"Start-state action: {first_action}")
+    else:
+        print("Start-state action: terminal/wall (no action)")
+
+    if not pos_terms or not neg_terms:
+        print("Observation: only one terminal type present; risk profile is limited.")
+        return
+
+    nearest_pos = min(pos_terms, key=lambda s: _manhattan(start, s))
+    nearest_neg = min(neg_terms, key=lambda s: _manhattan(start, s))
+
+    d_pos = _manhattan(start, nearest_pos)
+    d_neg = _manhattan(start, nearest_neg)
+    print(
+        f"Observation: nearest + terminal at distance {d_pos}, "
+        f"nearest - terminal at distance {d_neg}."
+    )
+    if d_neg < d_pos:
+        print("Interpretation: environment places early risk near the start.")
+    elif d_neg > d_pos:
+        print("Interpretation: reward is reached before risk from the start region.")
+    else:
+        print("Interpretation: risk and reward are similarly proximal from the start.")
+
+
+def save_policy_image(rows, cols, start, terminals, walls, values, policy, gamma, filename):
+    """Save a static image of state values and policy arrows using matplotlib."""
+    fig_w = max(6, cols * 1.4)
+    fig_h = max(4, rows * 1.4)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    ax.set_xlim(0, cols)
+    ax.set_ylim(0, rows)
+    ax.set_aspect('equal')
+    ax.axis('off')
+
+    for r in range(rows):
+        for c in range(cols):
+            x = c
+            y = rows - r - 1
+            s = (r, c)
+
+            if s in walls:
+                color = 'black'
+            elif s in terminals:
+                color = 'lightgreen' if terminals[s] > 0 else 'lightcoral'
+            else:
+                color = 'white'
+
+            rect = plt.Rectangle((x, y), 1, 1, facecolor=color, edgecolor='gray')
+            ax.add_patch(rect)
+
+            if s == start:
+                ax.text(x + 0.12, y + 0.88, 'S', fontsize=10, weight='bold', va='top')
+
+            if s in terminals:
+                ax.text(
+                    x + 0.5,
+                    y + 0.52,
+                    f"{terminals[s]:.2f}",
+                    fontsize=10,
+                    ha='center',
+                    va='center'
+                )
+            elif s in values:
+                ax.text(
+                    x + 0.5,
+                    y + 0.15,
+                    f"V={values[s]:.2f}",
+                    fontsize=8,
+                    ha='center',
+                    va='center'
+                )
+
+            if s in policy:
+                ax.text(
+                    x + 0.5,
+                    y + 0.55,
+                    ARROWS[policy[s]],
+                    fontsize=16,
+                    ha='center',
+                    va='center'
+                )
+
+    ax.set_title(f"Final Policy (gamma = {gamma})")
+    plt.tight_layout()
+    plt.savefig(filename, dpi=160)
+    plt.close(fig)
 
 
 def draw_grid(rows, cols, start, terminals, walls, values, policy, title='Grid World with State Values'):
@@ -262,8 +364,17 @@ if __name__ == '__main__':
     gamma_values = [0.9, 0.95, 0.99]
 
     for discount in gamma_values:
-        V = value_iteration(rows, cols, terminals, walls, step_reward, noise, discount)
+        print(f"\nShowing GUI for gamma = {discount}")
+        
+        V, iterations = value_iteration(rows, cols, terminals, walls, step_reward, noise, discount)
         policy = extract_policy(V, rows, cols, terminals, walls, step_reward, noise, discount)
+
+        image_name = f"policy_gamma_{str(discount).replace('.', '_')}.png"
+        save_policy_image(rows, cols, start, terminals, walls, V, policy, discount, image_name)
+        print(f"Saved policy image: {image_name}")
+        print(f"Iterations to convergence: {iterations}")
+        summarize_policy_behavior(start, terminals, policy)
+
         draw_grid(
             rows,
             cols,
@@ -274,3 +385,6 @@ if __name__ == '__main__':
             policy,
             title=f'Final Policy (gamma = {discount})'
         )
+        
+        
+        input("Press Enter to continue...")
